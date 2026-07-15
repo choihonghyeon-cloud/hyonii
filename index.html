@@ -1,0 +1,995 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>고양이 선생님의 온라인 예절 퀴즈 모험</title>
+<style>
+  html, body {
+    margin: 0;
+    height: 100%;
+    overflow: hidden;
+    background: linear-gradient(#bfe8ff, #eefaff);
+    font-family: Arial, "Apple SD Gothic Neo", sans-serif;
+  }
+  #wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    position: relative;
+  }
+  canvas {
+    border: 4px solid #1c4f80;
+    border-radius: 16px;
+    box-shadow: 0 12px 30px rgba(0,0,0,.18);
+    max-width: 96vw;
+    max-height: 78vh;
+    background: #bfe8ff;
+  }
+  .guide {
+    margin-top: 10px;
+    color: #173653;
+    font-weight: 700;
+    text-align: center;
+    line-height: 1.5;
+  }
+  .creator {
+    margin-top: 6px;
+    color: #5f7182;
+    font-size: 12px;
+    font-weight: 500;
+    text-align: center;
+  }
+
+  /* Quiz modal */
+  #quizOverlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.55);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 20px;
+    box-sizing: border-box;
+  }
+  #quizBox {
+    width: min(920px, 95vw);
+    max-height: 92vh;
+    overflow: auto;
+    background: #ffffff;
+    border-radius: 22px;
+    box-shadow: 0 20px 50px rgba(0,0,0,.28);
+    border: 4px solid #1c4f80;
+    padding: 22px;
+    box-sizing: border-box;
+  }
+  #quizHeader {
+    color: #1c4f80;
+    font-size: 28px;
+    font-weight: 900;
+    margin-bottom: 8px;
+  }
+  #quizQuestion {
+    font-size: 24px;
+    font-weight: 800;
+    color: #173653;
+    margin: 12px 0 20px;
+    line-height: 1.4;
+  }
+  #quizScene {
+    margin-bottom: 18px;
+    display: flex;
+    justify-content: center;
+  }
+  #quizOptions {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .optionBtn {
+    border: 3px solid #a9c7e3;
+    background: #f7fbff;
+    color: #173653;
+    border-radius: 16px;
+    padding: 14px;
+    font-size: 19px;
+    font-weight: 700;
+    text-align: left;
+    cursor: pointer;
+    transition: transform .08s ease, box-shadow .08s ease, border-color .15s ease;
+  }
+  .optionBtn:hover {
+    transform: translateY(-1px);
+    border-color: #4f89bd;
+    box-shadow: 0 6px 16px rgba(28,79,128,.12);
+  }
+  .optionBtn.correct {
+    border-color: #4caf50;
+    background: #eefbea;
+  }
+  .optionBtn.wrong {
+    border-color: #d9534f;
+    background: #fff1f0;
+  }
+
+  .imageGrid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(140px, 1fr));
+    gap: 14px;
+  }
+  .imageOption {
+    border: 3px solid #a9c7e3;
+    background: #f7fbff;
+    border-radius: 18px;
+    padding: 10px;
+    cursor: pointer;
+    transition: transform .08s ease, box-shadow .08s ease, border-color .15s ease;
+  }
+  .imageOption:hover {
+    transform: translateY(-1px);
+    border-color: #4f89bd;
+    box-shadow: 0 6px 16px rgba(28,79,128,.12);
+  }
+  .imageOption.correct {
+    border-color: #4caf50;
+    background: #eefbea;
+  }
+  .imageOption.wrong {
+    border-color: #d9534f;
+    background: #fff1f0;
+  }
+  .imageOption img, #quizScene img {
+    width: 100%;
+    display: block;
+    border-radius: 12px;
+    background: #ffffff;
+  }
+  .imageLabel {
+    margin-top: 8px;
+    color: #173653;
+    font-weight: 800;
+    font-size: 15px;
+    line-height: 1.35;
+  }
+
+  #quizFeedback {
+    margin-top: 18px;
+    font-size: 19px;
+    font-weight: 800;
+    line-height: 1.45;
+    color: #173653;
+    min-height: 32px;
+  }
+  .feedbackCorrect { color: #2e7d32; }
+  .feedbackWrong { color: #c0392b; }
+  #continueBtn {
+    margin-top: 16px;
+    padding: 12px 18px;
+    border: none;
+    border-radius: 12px;
+    background: #1c4f80;
+    color: #fff;
+    font-size: 18px;
+    font-weight: 900;
+    cursor: pointer;
+    display: none;
+  }
+  #continueBtn:hover { opacity: .92; }
+
+  @media (max-width: 740px) {
+    #quizQuestion { font-size: 20px; }
+    #quizHeader { font-size: 24px; }
+    .imageGrid { grid-template-columns: 1fr; }
+    .optionBtn { font-size: 17px; }
+  }
+
+  #mobileControls {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 12px;
+    z-index: 5000;
+    display: none;
+    justify-content: space-between;
+    align-items: flex-end;
+    padding: 0 14px;
+    pointer-events: none;
+    box-sizing: border-box;
+  }
+  .mobileGroup {
+    display: flex;
+    gap: 10px;
+    pointer-events: auto;
+  }
+  .mobileBtn {
+    width: 74px;
+    height: 74px;
+    border: 3px solid #ffffff;
+    border-radius: 20px;
+    background: rgba(28,79,128,.92);
+    color: #ffffff;
+    font-size: 30px;
+    font-weight: 900;
+    box-shadow: 0 8px 20px rgba(0,0,0,.28);
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  .mobileBtn.active {
+    transform: scale(.95);
+    background: rgba(12,48,78,.98);
+  }
+  #jumpBtn {
+    width: 96px;
+    font-size: 21px;
+  }
+  #rotateNotice {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 6000;
+    background: #173653;
+    color: #ffffff;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 30px;
+    box-sizing: border-box;
+    font-size: 24px;
+    font-weight: 900;
+    line-height: 1.5;
+  }
+
+  @media screen and (max-width: 1024px) {
+    #mobileControls { display: flex !important; }
+    #wrap {
+      justify-content: flex-start;
+      padding-top: 6px;
+      box-sizing: border-box;
+    }
+    canvas {
+      max-width: 100vw;
+      max-height: calc(100vh - 120px);
+      border-width: 2px;
+      border-radius: 8px;
+    }
+    .guide {
+      font-size: 11px;
+      margin-top: 3px;
+    }
+    .creator {
+      font-size: 10px;
+      margin-top: 2px;
+      margin-bottom: 92px;
+    }
+  }
+
+  @media screen and (max-width: 1024px) and (orientation: portrait) {
+    #rotateNotice { display: flex; }
+  }
+
+
+  #restartBtn {
+    position: fixed;
+    top: 12px;
+    right: 12px;
+    z-index: 5500;
+    display: none;
+    padding: 10px 14px;
+    border: 3px solid #ffffff;
+    border-radius: 14px;
+    background: rgba(28,79,128,.92);
+    color: #ffffff;
+    font-size: 15px;
+    font-weight: 900;
+    box-shadow: 0 6px 16px rgba(0,0,0,.24);
+    touch-action: manipulation;
+  }
+  #restartBtn:active {
+    transform: scale(.96);
+    background: rgba(12,48,78,.98);
+  }
+
+  @media screen and (max-width: 1024px) {
+    #restartBtn { display: block !important; }
+  }
+
+</style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="game" width="960" height="540"></canvas>
+  <div class="guide">
+    이동: ← → 또는 A D · 점프: 스페이스바 · 다시 시작: R<br>
+    별을 먹으면 온라인 예절 퀴즈가 나와요!
+  </div>
+  <div class="creator">만든이: 경남온라인학교 교사 최홍현</div>
+</div>
+
+
+<button id="restartBtn" aria-label="게임 다시 시작">다시 시작</button>
+
+<div id="mobileControls" aria-label="모바일 게임 조작 버튼">
+  <div class="mobileGroup">
+    <button class="mobileBtn" id="leftBtn" aria-label="왼쪽 이동">◀</button>
+    <button class="mobileBtn" id="rightBtn" aria-label="오른쪽 이동">▶</button>
+  </div>
+  <div class="mobileGroup">
+    <button class="mobileBtn" id="jumpBtn" aria-label="점프">점프</button>
+  </div>
+</div>
+
+<div id="rotateNotice">
+  휴대폰을 가로로 돌려주세요.<br>
+  가로 화면에서 게임을 편하게 할 수 있어요.
+</div>
+
+<div id="quizOverlay">
+  <div id="quizBox">
+    <div id="quizHeader">온라인 예절 퀴즈</div>
+    <div id="quizQuestion"></div>
+    <div id="quizScene"></div>
+    <div id="quizOptions"></div>
+    <div id="quizFeedback"></div>
+    <button id="continueBtn">계속하기</button>
+  </div>
+</div>
+
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+const gravity = 0.7;
+const keys = {};
+let gameState = "play";
+let score = 0;
+let cameraX = 0;
+let activeQuizIndex = null;
+let pendingStarIndex = null;
+
+const quizOverlay = document.getElementById("quizOverlay");
+const quizQuestionEl = document.getElementById("quizQuestion");
+const quizSceneEl = document.getElementById("quizScene");
+const quizOptionsEl = document.getElementById("quizOptions");
+const quizFeedbackEl = document.getElementById("quizFeedback");
+const continueBtn = document.getElementById("continueBtn");
+
+const worldWidth = 2600;
+
+const player = {
+  x: 100, y: 360, w: 44, h: 54,
+  vx: 0, vy: 0, speed: 5.5, jump: 13,
+  onGround: false, facing: 1
+};
+
+const platforms = [
+  {x:0, y:480, w:640, h:60},
+  {x:720, y:480, w:430, h:60},
+  {x:1210, y:480, w:500, h:60},
+  {x:1780, y:480, w:380, h:60},
+  {x:2240, y:480, w:360, h:60},
+
+  {x:300, y:380, w:150, h:24},
+  {x:850, y:380, w:150, h:24},
+  {x:1310, y:395, w:220, h:24},
+  {x:1860, y:390, w:230, h:24},
+  {x:2280, y:390, w:220, h:24}
+];
+
+const stars = [
+  {x:375, y:335, r:12, solved:false, opened:false},
+  {x:925, y:335, r:12, solved:false, opened:false},
+  {x:1420, y:350, r:12, solved:false, opened:false},
+  {x:1975, y:315, r:12, solved:false, opened:false},
+  {x:2390, y:345, r:12, solved:false, opened:false}
+];
+
+const enemies = [
+  {x:800, y:440, w:38, h:40, vx:1.5, min:740, max:1090, alive:true},
+  {x:1350, y:440, w:38, h:40, vx:1.8, min:1230, max:1670, alive:true},
+  {x:1890, y:440, w:38, h:40, vx:1.6, min:1800, max:2120, alive:true}
+];
+
+const goal = {x:2500, y:365, w:70, h:115};
+
+function svgData(svg) {
+  return "data:image/svg+xml;utf8," + encodeURIComponent(svg);
+}
+
+const imgQ2_headOnly = svgData(`
+<svg xmlns="http://www.w3.org/2000/svg" width="260" height="180" viewBox="0 0 260 180">
+  <rect width="260" height="180" fill="#d8efff"/>
+  <rect x="20" y="20" width="220" height="140" rx="14" fill="#ffffff" stroke="#87b5da" stroke-width="4"/>
+  <circle cx="130" cy="120" r="48" fill="#f2a65a"/>
+  <path d="M96 95 L110 68 L121 96 Z" fill="#f2a65a"/>
+  <path d="M164 95 L150 68 L139 96 Z" fill="#f2a65a"/>
+  <rect x="98" y="117" width="10" height="10" fill="#222"/>
+  <rect x="152" y="117" width="10" height="10" fill="#222"/>
+  <text x="130" y="44" font-size="18" font-weight="700" text-anchor="middle" fill="#35516b">머리카락/얼굴 일부만 보임</text>
+</svg>`);
+
+const imgQ2_ceiling = svgData(`
+<svg xmlns="http://www.w3.org/2000/svg" width="260" height="180" viewBox="0 0 260 180">
+  <rect width="260" height="180" fill="#d8efff"/>
+  <rect x="20" y="20" width="220" height="140" rx="14" fill="#ffffff" stroke="#87b5da" stroke-width="4"/>
+  <rect x="35" y="35" width="190" height="110" fill="#f2f2f2"/>
+  <circle cx="130" cy="84" r="20" fill="#e6dd8b" stroke="#c1b666" stroke-width="4"/>
+  <line x1="130" y1="44" x2="130" y2="64" stroke="#999" stroke-width="4"/>
+  <text x="130" y="154" font-size="18" font-weight="700" text-anchor="middle" fill="#35516b">천장만 보임</text>
+</svg>`);
+
+const imgQ2_proper = svgData(`
+<svg xmlns="http://www.w3.org/2000/svg" width="260" height="180" viewBox="0 0 260 180">
+  <rect width="260" height="180" fill="#d8efff"/>
+  <rect x="20" y="20" width="220" height="140" rx="14" fill="#ffffff" stroke="#87b5da" stroke-width="4"/>
+  <circle cx="130" cy="82" r="28" fill="#f2a65a"/>
+  <path d="M109 67 L117 48 L124 68 Z" fill="#f2a65a"/>
+  <path d="M151 67 L143 48 L136 68 Z" fill="#f2a65a"/>
+  <rect x="120" y="77" width="5" height="5" fill="#222"/>
+  <rect x="136" y="77" width="5" height="5" fill="#222"/>
+  <rect x="93" y="108" width="74" height="30" rx="12" fill="#4679aa"/>
+  <text x="130" y="154" font-size="18" font-weight="700" text-anchor="middle" fill="#35516b">얼굴과 정면이 잘 보임</text>
+</svg>`);
+
+const imgQ2_cameraOff = svgData(`
+<svg xmlns="http://www.w3.org/2000/svg" width="260" height="180" viewBox="0 0 260 180">
+  <rect width="260" height="180" fill="#d8efff"/>
+  <rect x="20" y="20" width="220" height="140" rx="14" fill="#2d3f50" stroke="#87b5da" stroke-width="4"/>
+  <circle cx="130" cy="84" r="28" fill="#607d8b"/>
+  <path d="M130 57 A28 28 0 0 1 130 111" fill="#607d8b"/>
+  <rect x="89" y="115" width="82" height="12" rx="6" fill="#607d8b"/>
+  <line x1="88" y1="48" x2="172" y2="132" stroke="#d9534f" stroke-width="8"/>
+  <text x="130" y="154" font-size="18" font-weight="700" text-anchor="middle" fill="#e9f2f8">꺼진 화면</text>
+</svg>`);
+
+const imgQ5_scene = svgData(`
+<svg xmlns="http://www.w3.org/2000/svg" width="460" height="240" viewBox="0 0 460 240">
+  <rect width="460" height="240" rx="20" fill="#f7fbff"/>
+  <rect x="18" y="18" width="424" height="204" rx="18" fill="#ffffff" stroke="#87b5da" stroke-width="4"/>
+  <rect x="40" y="180" width="380" height="18" rx="9" fill="#8a6d4d"/>
+  <rect x="88" y="122" width="118" height="52" rx="8" fill="#c0d9ec" stroke="#6fa0c8" stroke-width="4"/>
+  <rect x="98" y="132" width="98" height="32" rx="4" fill="#e9f4fb"/>
+  <circle cx="270" cy="84" r="28" fill="#f2a65a"/>
+  <path d="M249 69 L257 50 L264 70 Z" fill="#f2a65a"/>
+  <path d="M291 69 L283 50 L276 70 Z" fill="#f2a65a"/>
+  <rect x="260" y="79" width="5" height="5" fill="#222"/>
+  <rect x="276" y="79" width="5" height="5" fill="#222"/>
+  <rect x="235" y="108" width="74" height="30" rx="12" fill="#4679aa"/>
+  <rect x="325" y="44" width="84" height="34" rx="8" fill="#ffffff" stroke="#d9534f" stroke-width="4"/>
+  <rect x="335" y="54" width="22" height="14" rx="3" fill="#d9534f"/>
+  <rect x="359" y="58" width="4" height="6" fill="#d9534f"/>
+  <text x="367" y="66" font-size="16" font-weight="700" fill="#d9534f">충전 0%</text>
+  <text x="230" y="204" font-size="18" font-weight="700" text-anchor="middle" fill="#35516b">정면으로 잘 듣고 있지만 노트북 충전이 안 되어 있음</text>
+</svg>`);
+
+const questions = [
+  {
+    type: "text",
+    question: "문제 1. 온라인 수업은 언제 들어오나요?",
+    options: [
+      "5분 전에 미리 준비해서 정시에 들어온다",
+      "들어가기 힘드니까 늦게 들어가도 된다"
+    ],
+    answer: 0,
+    explanation: "정답입니다! 온라인 수업은 미리 준비해서 정시에 들어오는 것이 바른 예절이에요."
+  },
+  {
+    type: "image",
+    question: "문제 2. 다음 중 화면에 가장 바르게 보이는 학생은?",
+    imageOptions: [
+      {src: imgQ2_headOnly, label: "얼굴 머리카락까지만 나온 그림"},
+      {src: imgQ2_ceiling, label: "천장 찍은 그림"},
+      {src: imgQ2_proper, label: "얼굴이랑 정면에 나온 그림"},
+      {src: imgQ2_cameraOff, label: "꺼진 화면"}
+    ],
+    answer: 2,
+    explanation: "정답입니다! 얼굴과 상반신이 정면으로 잘 보이도록 화면을 맞추는 것이 좋아요."
+  },
+  {
+    type: "text",
+    question: "문제 3. 온라인 수업을 듣는 장소는?",
+    options: [
+      "학교 내 정해진 장소",
+      "내 마음 내키는대로",
+      "무조건 하교해서 집에 간다"
+    ],
+    answer: 0,
+    explanation: "정답입니다! 온라인 수업은 학교 내 정해진 장소에서 참여해야 해요."
+  },
+  {
+    type: "text",
+    question: "문제 4. 초상권 침해 행동이 아닌 것은?",
+    options: [
+      "허락 없이 다른 학생의 얼굴을 촬영",
+      "허락 없이 선생님을 캡처",
+      "허락 없이 선생님을 편집, 합성해서 업로드",
+      "수업시간에 내 사진만 캡처"
+    ],
+    answer: 3,
+    explanation: "정답입니다! 다른 사람을 허락 없이 촬영·캡처·편집하는 것은 초상권 침해가 될 수 있어요."
+  },
+  {
+    type: "scene",
+    question: "문제 5. 다음 이 학생의 문제점은?",
+    sceneImage: imgQ5_scene,
+    options: [
+      "지각함",
+      "전자기기 충전이 안되어 있음",
+      "수업 중 밥 먹음"
+    ],
+    answer: 1,
+    explanation: "정답입니다! 수업 전에 노트북과 전자기기 충전 상태를 꼭 확인해야 해요."
+  }
+];
+
+addEventListener("keydown", e => {
+  const k = e.key.toLowerCase();
+  keys[k] = true;
+  if (["arrowleft","arrowright"," ","arrowup","w","a","d"].includes(k)) e.preventDefault();
+  if (k === "r") resetGame();
+});
+addEventListener("keyup", e => keys[e.key.toLowerCase()] = false);
+
+// Mobile controls
+const leftBtn = document.getElementById("leftBtn");
+const rightBtn = document.getElementById("rightBtn");
+const jumpBtn = document.getElementById("jumpBtn");
+const restartBtn = document.getElementById("restartBtn");
+
+restartBtn.addEventListener("click", (e) => {
+  e.preventDefault();
+  resetGame();
+});
+
+function updateMobileControlsVisibility() {
+  const isSmallScreen = window.innerWidth <= 1024;
+  const isTouchDevice = ("ontouchstart" in window) || navigator.maxTouchPoints > 0;
+  const controls = document.getElementById("mobileControls");
+  const restart = document.getElementById("restartBtn");
+  if (controls && (isSmallScreen || isTouchDevice)) {
+    controls.style.display = "flex";
+  }
+  if (restart && (isSmallScreen || isTouchDevice)) {
+    restart.style.display = "block";
+  }
+}
+
+updateMobileControlsVisibility();
+window.addEventListener("resize", updateMobileControlsVisibility);
+window.addEventListener("orientationchange", updateMobileControlsVisibility);
+
+function bindHoldButton(button, keyName) {
+  const press = (e) => {
+    e.preventDefault();
+    keys[keyName] = true;
+    button.classList.add("active");
+  };
+  const release = (e) => {
+    e.preventDefault();
+    keys[keyName] = false;
+    button.classList.remove("active");
+  };
+
+  button.addEventListener("pointerdown", press);
+  button.addEventListener("pointerup", release);
+  button.addEventListener("pointercancel", release);
+  button.addEventListener("pointerleave", release);
+  button.addEventListener("contextmenu", e => e.preventDefault());
+}
+
+bindHoldButton(leftBtn, "arrowleft");
+bindHoldButton(rightBtn, "arrowright");
+bindHoldButton(jumpBtn, " ");
+
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) {
+    keys["arrowleft"] = false;
+    keys["arrowright"] = false;
+    keys[" "] = false;
+    leftBtn.classList.remove("active");
+    rightBtn.classList.remove("active");
+    jumpBtn.classList.remove("active");
+  }
+});
+
+continueBtn.addEventListener("click", () => {
+  closeQuizAndResume();
+});
+
+function resetGame() {
+  player.x = 100;
+  player.y = 360;
+  player.vx = 0;
+  player.vy = 0;
+  player.onGround = false;
+  score = 0;
+  cameraX = 0;
+  gameState = "play";
+  activeQuizIndex = null;
+  pendingStarIndex = null;
+  quizOverlay.style.display = "none";
+  continueBtn.style.display = "none";
+  stars.forEach(s => { s.solved = false; s.opened = false; });
+  enemies.forEach((e,i) => {
+    e.alive = true;
+    e.x = [800,1350,1890][i];
+  });
+}
+
+function rectsOverlap(a,b) {
+  return a.x < b.x+b.w && a.x+a.w > b.x && a.y < b.y+b.h && a.y+a.h > b.y;
+}
+
+function starBox(s) {
+  return {x:s.x-s.r, y:s.y-s.r, w:s.r*2, h:s.r*2};
+}
+
+function update() {
+  if (gameState !== "play") return;
+
+  let dir = 0;
+  if (keys["arrowleft"] || keys["a"]) dir -= 1;
+  if (keys["arrowright"] || keys["d"]) dir += 1;
+  player.vx = dir * player.speed;
+  if (dir !== 0) player.facing = dir;
+
+  if ((keys[" "] || keys["arrowup"] || keys["w"]) && player.onGround) {
+    player.vy = -player.jump;
+    player.onGround = false;
+  }
+
+  player.vy += gravity;
+  player.x += player.vx;
+  player.x = Math.max(0, Math.min(worldWidth - player.w, player.x));
+
+  player.y += player.vy;
+  player.onGround = false;
+
+  for (const p of platforms) {
+    if (
+      player.x + player.w > p.x &&
+      player.x < p.x + p.w &&
+      player.y + player.h > p.y &&
+      player.y + player.h - player.vy <= p.y &&
+      player.vy >= 0
+    ) {
+      player.y = p.y - player.h;
+      player.vy = 0;
+      player.onGround = true;
+    }
+  }
+
+  // Quiz stars
+  for (let i = 0; i < stars.length; i++) {
+    const s = stars[i];
+    if (!s.solved && !s.opened && rectsOverlap(player, starBox(s))) {
+      s.opened = true;
+      pendingStarIndex = i;
+      openQuiz(i);
+      return;
+    }
+  }
+
+  // Enemies
+  for (const e of enemies) {
+    if (!e.alive) continue;
+    e.x += e.vx;
+    if (e.x < e.min || e.x > e.max) e.vx *= -1;
+
+    if (rectsOverlap(player, e)) {
+      const playerBottomBefore = player.y + player.h - player.vy;
+      if (player.vy > 0 && playerBottomBefore <= e.y + 12) {
+        e.alive = false;
+        player.vy = -9;
+      } else {
+        gameState = "lose";
+      }
+    }
+  }
+
+  // Goal
+  if (rectsOverlap(player, goal)) {
+    gameState = (score === stars.length) ? "win" : "need";
+  }
+
+  if (player.y > canvas.height + 200) {
+    gameState = "lose";
+  }
+
+  const targetCam = player.x - canvas.width * 0.38;
+  cameraX += (targetCam - cameraX) * 0.12;
+  cameraX = Math.max(0, Math.min(worldWidth - canvas.width, cameraX));
+}
+
+function openQuiz(index) {
+  activeQuizIndex = index;
+  gameState = "quiz";
+  const q = questions[index];
+  quizQuestionEl.textContent = q.question;
+  quizSceneEl.innerHTML = "";
+  quizOptionsEl.innerHTML = "";
+  quizFeedbackEl.innerHTML = "";
+  continueBtn.style.display = "none";
+
+  if (q.type === "scene" && q.sceneImage) {
+    const img = document.createElement("img");
+    img.src = q.sceneImage;
+    img.alt = "문제 그림";
+    img.style.maxWidth = "460px";
+    quizSceneEl.appendChild(img);
+  }
+
+  if (q.type === "image") {
+    const grid = document.createElement("div");
+    grid.className = "imageGrid";
+    q.imageOptions.forEach((opt, idx) => {
+      const card = document.createElement("div");
+      card.className = "imageOption";
+      const img = document.createElement("img");
+      img.src = opt.src;
+      img.alt = opt.label;
+      const label = document.createElement("div");
+      label.className = "imageLabel";
+      label.textContent = `${idx + 1}. ${opt.label}`;
+      card.appendChild(img);
+      card.appendChild(label);
+      card.addEventListener("click", () => handleAnswer(idx, card));
+      grid.appendChild(card);
+    });
+    quizOptionsEl.appendChild(grid);
+  } else {
+    q.options.forEach((opt, idx) => {
+      const btn = document.createElement("button");
+      btn.className = "optionBtn";
+      btn.innerHTML = `${idx + 1}. ${opt}`;
+      btn.addEventListener("click", () => handleAnswer(idx, btn));
+      quizOptionsEl.appendChild(btn);
+    });
+  }
+
+  quizOverlay.style.display = "flex";
+}
+
+function disableAllOptions() {
+  quizOptionsEl.querySelectorAll("button, .imageOption").forEach(el => {
+    el.style.pointerEvents = "none";
+  });
+}
+
+function enableAllOptions() {
+  quizOptionsEl.querySelectorAll("button, .imageOption").forEach(el => {
+    el.style.pointerEvents = "auto";
+  });
+}
+
+function clearWrongMarks() {
+  quizOptionsEl.querySelectorAll(".wrong").forEach(el => el.classList.remove("wrong"));
+}
+
+function handleAnswer(choiceIndex, clickedEl) {
+  const q = questions[activeQuizIndex];
+  clearWrongMarks();
+
+  if (choiceIndex === q.answer) {
+    clickedEl.classList.add("correct");
+    quizFeedbackEl.innerHTML = `<span class="feedbackCorrect">${q.explanation}</span>`;
+    disableAllOptions();
+
+    if (pendingStarIndex !== null && !stars[pendingStarIndex].solved) {
+      stars[pendingStarIndex].solved = true;
+      score++;
+    }
+    continueBtn.style.display = "inline-block";
+  } else {
+    clickedEl.classList.add("wrong");
+    quizFeedbackEl.innerHTML = `<span class="feedbackWrong">다시 생각해보세요!</span>`;
+    setTimeout(() => clickedEl.classList.remove("wrong"), 650);
+    enableAllOptions();
+  }
+}
+
+function closeQuizAndResume() {
+  quizOverlay.style.display = "none";
+  quizOptionsEl.innerHTML = "";
+  quizSceneEl.innerHTML = "";
+  quizFeedbackEl.innerHTML = "";
+  continueBtn.style.display = "none";
+  activeQuizIndex = null;
+  pendingStarIndex = null;
+  gameState = "play";
+}
+
+function drawBackground() {
+  ctx.fillStyle = "#bfe8ff";
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+
+  ctx.fillStyle = "rgba(255,255,255,.9)";
+  for (const c of [[120,90],[430,70],[760,120]]) {
+    ctx.beginPath();
+    ctx.arc(c[0],c[1],28,0,Math.PI*2);
+    ctx.arc(c[0]+32,c[1]-10,35,0,Math.PI*2);
+    ctx.arc(c[0]+67,c[1],25,0,Math.PI*2);
+    ctx.fill();
+  }
+
+  ctx.fillStyle = "#8bcaa8";
+  ctx.beginPath();
+  ctx.moveTo(0,430);
+  ctx.quadraticCurveTo(220,250,440,430);
+  ctx.quadraticCurveTo(670,280,960,430);
+  ctx.lineTo(960,540);
+  ctx.lineTo(0,540);
+  ctx.closePath();
+  ctx.fill();
+}
+
+function drawPlatform(p) {
+  ctx.fillStyle = "#487d52";
+  ctx.fillRect(p.x-cameraX,p.y,p.w,p.h);
+  ctx.fillStyle = "#70b96a";
+  ctx.fillRect(p.x-cameraX,p.y,p.w,9);
+}
+
+function drawStar(s) {
+  if (s.solved) return;
+  const x = s.x-cameraX, y = s.y;
+  ctx.save();
+  ctx.translate(x,y);
+  ctx.fillStyle = "#ffd54f";
+  ctx.strokeStyle = "#e0a900";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  for (let i=0;i<10;i++) {
+    const a = -Math.PI/2 + i*Math.PI/5;
+    const r = i%2===0 ? s.r : s.r*0.45;
+    const px = Math.cos(a)*r;
+    const py = Math.sin(a)*r;
+    if (i===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
+  }
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawEnemy(e) {
+  if (!e.alive) return;
+  const x = e.x-cameraX;
+  ctx.fillStyle = "#8e5c3b";
+  ctx.fillRect(x,e.y,e.w,e.h);
+  ctx.fillStyle = "#f4e6d4";
+  ctx.fillRect(x+7,e.y+9,8,8);
+  ctx.fillRect(x+23,e.y+9,8,8);
+  ctx.fillStyle = "#222";
+  ctx.fillRect(x+10,e.y+12,3,3);
+  ctx.fillRect(x+26,e.y+12,3,3);
+  ctx.fillStyle = "#5d3b26";
+  ctx.fillRect(x+7,e.y+34,24,6);
+}
+
+function drawGoal() {
+  const x = goal.x-cameraX;
+  ctx.fillStyle = "#dfe7ef";
+  ctx.fillRect(x,goal.y,goal.w,goal.h);
+  ctx.fillStyle = "#2d6da3";
+  ctx.fillRect(x+8,goal.y+8,goal.w-16,goal.h-8);
+  ctx.fillStyle = "#fff";
+  ctx.font = "bold 15px sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillText("학교", x+goal.w/2, goal.y+38);
+  ctx.fillStyle = "#ffd54f";
+  ctx.beginPath();
+  ctx.arc(x+goal.w-15,goal.y+68,4,0,Math.PI*2);
+  ctx.fill();
+}
+
+function drawPlayer() {
+  const x = player.x-cameraX;
+  const y = player.y;
+  ctx.save();
+  ctx.translate(x+player.w/2,y+player.h/2);
+  ctx.scale(player.facing,1);
+
+  ctx.strokeStyle = "#d68c45";
+  ctx.lineWidth = 8;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.arc(-20,10,18,-1.4,1.1);
+  ctx.stroke();
+
+  ctx.fillStyle = "#f2a65a";
+  ctx.fillRect(-17,-2,34,28);
+
+  ctx.beginPath();
+  ctx.arc(0,-13,19,0,Math.PI*2);
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.moveTo(-15,-27); ctx.lineTo(-7,-45); ctx.lineTo(-1,-25);
+  ctx.moveTo(15,-27); ctx.lineTo(7,-45); ctx.lineTo(1,-25);
+  ctx.fill();
+
+  ctx.fillStyle = "#222";
+  ctx.fillRect(-8,-16,4,5);
+  ctx.fillRect(5,-16,4,5);
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(-1,-8,3,3);
+
+  ctx.strokeStyle = "#1c4f80";
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.arc(0,-15,23,Math.PI,0);
+  ctx.stroke();
+  ctx.fillStyle = "#1c4f80";
+  ctx.fillRect(-24,-17,7,15);
+  ctx.fillRect(17,-17,7,15);
+
+  ctx.fillStyle = "#315f8d";
+  ctx.fillRect(-15,24,11,9);
+  ctx.fillRect(5,24,11,9);
+
+  ctx.restore();
+}
+
+function drawHUD() {
+  ctx.fillStyle = "rgba(255,255,255,.92)";
+  ctx.fillRect(18,18,265,76);
+  ctx.strokeStyle = "#1c4f80";
+  ctx.lineWidth = 2;
+  ctx.strokeRect(18,18,265,76);
+  ctx.fillStyle = "#173653";
+  ctx.textAlign = "left";
+  ctx.font = "bold 22px sans-serif";
+  ctx.fillText(`퀴즈 별 ${score} / ${stars.length}`, 34, 52);
+  ctx.font = "bold 16px sans-serif";
+  ctx.fillText(`학교 문은 모든 문제를 맞힌 뒤 열려요!`, 34, 78);
+}
+
+function drawMessage() {
+  if (gameState === "play" || gameState === "quiz") return;
+  ctx.fillStyle = "rgba(0,0,0,.55)";
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.fillStyle = "#fff";
+  ctx.textAlign = "center";
+  ctx.font = "bold 42px sans-serif";
+
+  if (gameState === "win") {
+    ctx.fillText("온라인 예절 마스터!", canvas.width/2, 220);
+    ctx.font = "bold 24px sans-serif";
+    ctx.fillText("모든 문제를 맞히고 온라인학교에 도착했어요.", canvas.width/2, 270);
+  } else if (gameState === "need") {
+    ctx.fillText("아직 별이 부족해요!", canvas.width/2, 220);
+    ctx.font = "bold 24px sans-serif";
+    ctx.fillText("모든 문제를 풀고 학교 문으로 오세요.", canvas.width/2, 270);
+  } else {
+    ctx.fillText("앗, 다시 도전!", canvas.width/2, 220);
+    ctx.font = "bold 24px sans-serif";
+    ctx.fillText("R 키를 눌러 다시 시작하세요.", canvas.width/2, 270);
+  }
+
+  ctx.font = "bold 20px sans-serif";
+  ctx.fillText("R 키: 다시 시작", canvas.width/2, 330);
+}
+
+function draw() {
+  drawBackground();
+  platforms.forEach(drawPlatform);
+  stars.forEach(drawStar);
+  enemies.forEach(drawEnemy);
+  drawGoal();
+  drawPlayer();
+  drawHUD();
+  drawMessage();
+}
+
+function loop() {
+  update();
+  draw();
+  requestAnimationFrame(loop);
+}
+loop();
+</script>
+</body>
+</html>
